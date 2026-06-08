@@ -10,6 +10,7 @@ The repository organizes analysis scripts for several stages of the project, beg
 ```text
 spectra-harmonization/
 ├── README.md
+├── spectra-harmonization.Rproj
 ├── data-collection-QC/
 |   ├──raw_data_files/
 │   ├──scripts/
@@ -19,8 +20,7 @@ spectra-harmonization/
 │       ├── flagged_materials_fewer_than_5_files.csv
 │       └── qc_plots/
 └── analyses/
-```
-     
+``` 
 
 ## data-collection-QC
 
@@ -35,6 +35,16 @@ The QC scripts will:
 - Flag materials with fewer than the expected number of measurements.
 - Generate visual QC plots to identify abnormal spectra.
 - Produce output files that summarize file counts and flagged materials.
+
+### Recommended setup
+
+Open the repository in RStudio by double-clicking:
+
+```text
+spectra-harmonization.Rproj
+```
+
+This opens the repository as an R Project and sets the working directory to the repository root. The QC scripts assume that paths are relative to this root directory.
 
 ## analyses
 
