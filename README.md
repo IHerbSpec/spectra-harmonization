@@ -36,7 +36,7 @@ The QC scripts will:
 - Generate visual QC plots to identify abnormal spectra.
 - Produce output files that summarize file counts and flagged materials.
 
-## Analyses
+## analyses
 
 This is an open folder where participating researchers can set up their own directories for data transformation, analysis scripts, exploratory analyses, and related outputs.
 
