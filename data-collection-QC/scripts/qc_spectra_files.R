@@ -5,13 +5,13 @@
 # IHerbSpec harmonization kits.
 #
 # This script:
-#   1. Checks filename conventions
+#   1. Checks filename conventions (outputs parsed filename info and problem files)
 #   2. Counts files per material
-#   3. Flags materials with fewer than the expected number of files
-#   4. Reads spectral files with spectrolab
-#   5. Generates labeled QC plots for visual inspection
-#   6. Lets users exclude visually abnormal files
-#   7. Exports good files with full harmonization filenames
+#   3. Flags materials with fewer than the expected number of files (outputs list to csv)
+#   4. Reads spectral files with spectrolab (.sed, .sig, .asd, or .txt)
+#   5. Generates labeled QC plots for visual inspection for outlier spectra
+#   6. List/flag visually abnormal files in csv
+#   7. Exports good files with converted full filename convention
 # ============================================================
 
 # ---- packages ----
@@ -35,17 +35,23 @@ library(ggrepel)
 #   getwd()
 #
 # The script assumes paths are relative to the repository root.
-
-if (!dir.exists("data-collection-QC")) {
-  stop(
-    "Could not find 'data-collection-QC/'. ",
-    "Please set your working directory to the root of the spectra-harmonization repository."
-  )
-}
-
+#
 # ============================================================
 # User settings
 # ============================================================
+
+### Revise these:
+
+# Herbarium code for the participating lab (e.g. "HCMO")
+herbariumCode <- "HCHUH"
+
+# kitNumber (this will be parsed from full filename if it exists)
+kitNumber <- "1"
+
+# Minimum expected number of measurements per targetID + kitNumber.
+min_expected_files <- 5
+
+### Run these:
 
 # Folder containing raw spectral files.
 spectra_dir <- file.path("data-collection-QC", "raw_data_files")
@@ -60,43 +66,10 @@ qc_plot_dir <- file.path(out_dir, "qc_plots")
 good_files_dir <- file.path(out_dir, "good_files_full_filenames")
 
 # File where users list bad files to exclude after visual QC.
-# This file should contain only:
-#
-#   filename_with_extension, reason
-#
-# Example:
-#
-#   pnt1_0005.sed,bad NIR
 delete_list_csv <- file.path(out_dir, "files_to_delete.csv")
 
-# Minimum expected number of measurements per targetID + kitNumber.
-min_expected_files <- 5
-
-# Expected y-axis range for reflectance.
-reflectance_limits <- c(0, 1)
-
-# Herbarium code for the participating lab.
-# Change this for each institution.
-# Examples: "HCHUH", "HCMO", "HCNY"
-herbariumCode <- "HCHUH"
-
-# Kit number for the harmonization kit measured by this lab.
-# Users should always enter this.
-#
-# For simple local filenames such as:
-#   fab2_0002.sig
-#   pap1_0010.sed
-#
-# the script adds this kitNumber automatically.
-#
-# For full harmonization filenames such as:
-#   PIdataHarmonization2026_HCHUH_fab2_1_0002.sig
-#
-# the script uses the kitNumber parsed from the filename.
-kitNumber <- "1"
-
 # ============================================================
-# Required repo folders/files
+# Check for required repo folders/files
 # ============================================================
 #
 # These folders/files should already exist in the cloned repository.
@@ -166,9 +139,6 @@ if (!file.exists(delete_list_csv)) {
 # QC checks whether each targetID + kitNumber has at least
 # min_expected_files files, regardless of IDX values.
 #
-# Once data are QC'd and ready to share, exported files should use
-# the full harmonization filename convention together with the
-# metadata spreadsheet.
 # ============================================================
 
 valid_extensions <- c("sed", "sig", "asd", "txt")
@@ -199,7 +169,7 @@ cat("Number of spectral files found:", nrow(file_inventory), "\n")
 # ============================================================
 # Parse filenames
 # ============================================================
-
+#
 # Full harmonization filename:
 #   PIdataHarmonization2026_HCHUH_targetID_KitNumber_IDX
 #
@@ -209,6 +179,8 @@ cat("Number of spectral files found:", nrow(file_inventory), "\n")
 # targetID is allowed to contain underscores.
 # The final numeric field is always IDX.
 # In full harmonization names, the numeric field before IDX is kitNumber.
+#
+# ============================================================
 
 shared_regex <- "^(PIdataHarmonization2026)_([A-Za-z0-9]+)_(.+)_(\\d+)_(\\d+)$"
 local_regex  <- "^(.+)_(\\d+)$"
@@ -385,56 +357,6 @@ print(file_counts, n = Inf)
 cat("\nFlagged materials:\n")
 print(flagged_materials, n = Inf)
 
-# ============================================================
-# Read files listed for exclusion
-# ============================================================
-#
-# files_to_delete.csv must contain only:
-#
-#   filename_with_extension, reason
-#
-# Example:
-#
-#   pnt1_0005.sed,bad NIR
-#
-# This script does not delete original files. It only excludes
-# listed files from the final full-filename export.
-
-files_to_delete <- read_csv(
-  delete_list_csv,
-  show_col_types = FALSE
-)
-
-required_delete_cols <- c("filename_with_extension", "reason")
-
-missing_delete_cols <- setdiff(required_delete_cols, names(files_to_delete))
-
-if (length(missing_delete_cols) > 0) {
-  stop(
-    "files_to_delete.csv is missing required column(s): ",
-    paste(missing_delete_cols, collapse = ", "),
-    "\nExpected columns: filename_with_extension, reason"
-  )
-}
-
-files_to_delete <- files_to_delete %>%
-  select(filename_with_extension, reason) %>%
-  filter(
-    !is.na(filename_with_extension),
-    filename_with_extension != ""
-  ) %>%
-  distinct(filename_with_extension, .keep_all = TRUE)
-
-unknown_delete_files <- files_to_delete %>%
-  anti_join(
-    valid_files %>% select(filename_with_extension = file),
-    by = "filename_with_extension"
-  )
-
-if (nrow(unknown_delete_files) > 0) {
-  warning("Some files listed in files_to_delete.csv were not found among valid files.")
-  print(unknown_delete_files, n = Inf)
-}
 
 # ============================================================
 # Read spectral files by extension
@@ -571,7 +493,7 @@ plot_material_qc <- function(material_name) {
       show.legend = FALSE
     ) +
     scale_x_continuous(expand = expansion(mult = c(0.02, 0.25))) +
-    scale_y_continuous(limits = reflectance_limits) +
+    scale_y_continuous(limits = c(0, 1)) +
     labs(
       title = paste("QC plot:", material_name),
       subtitle = "Each line is one spectral file; labels identify filenames for visual QC",
@@ -595,13 +517,6 @@ for (mat in materials) {
   safe_mat <- str_replace_all(mat, "[^A-Za-z0-9]+", "_")
   
   ggsave(
-    filename = file.path(qc_plot_dir, paste0("QC_", safe_mat, ".pdf")),
-    plot = p,
-    width = 10,
-    height = 6
-  )
-  
-  ggsave(
     filename = file.path(qc_plot_dir, paste0("QC_", safe_mat, ".png")),
     plot = p,
     width = 10,
@@ -611,7 +526,7 @@ for (mat in materials) {
 }
 
 # ============================================================
-# Multipage PDF with all QC plots
+# Generate multipage PDF with all QC plots
 # ============================================================
 
 all_qc_pdf <- file.path(out_dir, "ALL_materials_QC_labeled_spectra.pdf")
@@ -623,6 +538,89 @@ for (mat in materials) {
 }
 
 dev.off()
+
+# ============================================================
+# Review QC plots and list files for exclusion in csv
+# ============================================================
+#
+# At this point, QC plots have been generated.
+#
+# Users should inspect:
+#   data-collection-QC/outputs/ALL_materials_QC_labeled_spectra.pdf
+#
+# and/or the individual plots in:
+#   data-collection-QC/outputs/qc_plots/
+#
+#
+# !! If any spectra look abnormal, ADD  their filenames to: !!
+#
+#   data-collection-QC/outputs/files_to_delete.csv
+#
+#
+# The CSV must contain only:
+#   filename_with_extension, reason (optional)
+#
+# Example:
+#   pnt1_0005.sed,bad NIR
+#
+# ============================================================
+
+cat("\nQC plots generated.\n")
+cat("Review the multipage QC PDF:\n")
+cat(all_qc_pdf, "\n")
+
+cat("\nReview individual QC plots in:\n")
+cat(qc_plot_dir, "\n")
+
+cat("\nIf any spectra look abnormal, add them to:\n")
+cat(delete_list_csv, "\n")
+
+cat("\nExpected files_to_delete.csv format:\n")
+cat("filename_with_extension,reason\n")
+cat("pnt1_0005.sed,bad NIR\n")
+
+cat("\nReading files_to_delete.csv and excluding listed files from export.\n")
+
+# Read the user-edited CSV that lists files to exclude from export.
+# The path to this CSV is defined above as delete_list_csv.
+files_to_delete <- read_csv(
+  delete_list_csv,
+  show_col_types = FALSE
+)
+
+# Confirm that files_to_delete.csv has the expected columns.
+if (!all(c("filename_with_extension", "reason") %in% names(files_to_delete))) {
+  stop(
+    "files_to_delete.csv must contain columns: filename_with_extension, reason"
+  )
+}
+
+# Print the filenames that will be excluded from export.
+cat("\nFiles listed for exclusion:\n")
+
+if (nrow(files_to_delete) == 0) {
+  cat("None\n")
+} else {
+  files_to_delete %>%
+    select(filename_with_extension, reason) %>%
+    print(n = Inf)
+}
+
+# Check whether any filenames listed for exclusion do not match
+# files that were parsed successfully from the raw data folder.
+unknown_delete_files <- files_to_delete %>%
+  anti_join(
+    valid_files %>% select(filename_with_extension = file),
+    by = "filename_with_extension"
+  )
+
+# Warn the user if files_to_delete.csv includes filenames that were not
+# found among the valid parsed files. This usually means there is a typo,
+# a missing extension, or the file did not pass filename parsing.
+if (nrow(unknown_delete_files) > 0) {
+  warning("Some files listed in files_to_delete.csv were not found among valid files.")
+  print(unknown_delete_files, n = Inf)
+}
 
 # ============================================================
 # Exclude user-listed bad files and export good files
@@ -695,11 +693,6 @@ write_csv(
   file.path(out_dir, "good_files_export_log.csv")
 )
 
-write_csv(
-  files_to_delete,
-  file.path(out_dir, "excluded_files.csv")
-)
-
 cat("\nGood files exported to:\n")
 cat(good_files_dir, "\n")
 
@@ -723,7 +716,6 @@ cat(file.path(out_dir, "parsed_file_inventory.csv"), "\n")
 cat(file.path(out_dir, "file_counts_by_material.csv"), "\n")
 cat(file.path(out_dir, "bad_filenames.csv"), "\n")
 cat(file.path(out_dir, "files_to_delete.csv"), "\n")
-cat(file.path(out_dir, "excluded_files.csv"), "\n")
 cat(file.path(out_dir, "good_files_export_log.csv"), "\n")
 cat(all_qc_pdf, "\n")
 cat(good_files_dir, "\n")
