@@ -25,35 +25,22 @@
 *.sed
 *.sig
 *.asd
-*.txt
 *.raw
 
 
 # ============================================================
-# data-collection-QC local data and outputs
+# Local data and outputs
 # ============================================================
 
-# Ignore raw data contents but keep directory placeholder
-data-collection-QC/raw_data_files/*
-!data-collection-QC/raw_data_files/.gitkeep
-
-# Ignore output files but keep expected directories and template files
-data-collection-QC/outputs/*
-
-# Keep output root placeholder
-!data-collection-QC/outputs/.gitkeep
-
-# Keep the delete/exclusion template tracked
-!data-collection-QC/outputs/files_to_delete.csv
-
-# Keep QC plots directory placeholder, but ignore generated plots
-!data-collection-QC/outputs/qc_plots/
-data-collection-QC/outputs/qc_plots/*
-!data-collection-QC/outputs/qc_plots/.gitkeep
-
-# Keep good-files export directory placeholder, but ignore exported spectral files
-!data-collection-QC/outputs/good_files_full_filenames/
-data-collection-QC/outputs/good_files_full_filenames/*
-!data-collection-QC/outputs/good_files_full_filenames/.gitkeep
+raw_data_files/
+outputs/
 
 
+# ============================================================
+# Shiny app QC outputs (written inside selected spectral dir)
+# ============================================================
+
+shiny_qc_outputs/
+
+
+.positai
