@@ -71,11 +71,11 @@ list_spectral_files <- function(spectra_dir) {
 
 parse_filenames <- function(file_inventory, kitNumber_default = NA_character_) {
   # New full harmonization filename:
-  #   projectId_herbariumCode_targetId_kitNumber_measurementIndex.ext
+  #   projectId_herbariumCode_targetClass_kitNumber_measurementIndex.ext
   # Simple local filename:
-  #   targetId_measurementIndex.ext
+  #   targetClass_measurementIndex.ext
   #
-  # This parser allows underscores inside targetId by anchoring the final two
+  # This parser allows underscores inside targetClass by anchoring the final two
   # fields for the full format and the final field for the local format.
 
   full_regex <- "^([^_]+)_([A-Za-z0-9]+)_(.+)_([0-9]+)_([0-9]+)$"
@@ -96,7 +96,7 @@ parse_filenames <- function(file_inventory, kitNumber_default = NA_character_) {
         str_match(filename_no_ext, full_regex)[, 3],
         NA_character_
       ),
-      targetId_full = if_else(
+      targetClass_full = if_else(
         is_full_name,
         str_match(filename_no_ext, full_regex)[, 4],
         NA_character_
@@ -111,7 +111,7 @@ parse_filenames <- function(file_inventory, kitNumber_default = NA_character_) {
         str_match(filename_no_ext, full_regex)[, 6],
         NA_character_
       ),
-      targetId_local = if_else(
+      targetClass_local = if_else(
         is_local_name,
         str_match(filename_no_ext, local_regex)[, 2],
         NA_character_
@@ -122,14 +122,14 @@ parse_filenames <- function(file_inventory, kitNumber_default = NA_character_) {
         str_match(filename_no_ext, local_regex)[, 3],
         NA_character_
       ),
-      targetId_raw = coalesce(targetId_full, targetId_local),
-      targetId = str_remove(targetId_raw, "^TC"),
+      targetClass_raw = coalesce(targetClass_full, targetClass_local),
+      targetClass = str_remove(targetClass_raw, "^TC"),
       kitNumber = coalesce(kitNumber_full, kitNumber_local),
       measurementIndex = coalesce(measurementIndex_full, measurementIndex_local),
       kitNumber_int = suppressWarnings(as.integer(kitNumber)),
       measurementIndex_int = suppressWarnings(as.integer(measurementIndex)),
-      material_valid = targetId %in% VALID_MATERIALS,
-      material_id = paste(targetId, kitNumber, sep = "_"),
+      material_valid = targetClass %in% VALID_MATERIALS,
+      material_id = paste(targetClass, kitNumber, sep = "_"),
       filename_type = case_when(
         is_full_name ~ "full_harmonization_filename",
         is_local_name ~ "simple_local_filename",
@@ -139,15 +139,15 @@ parse_filenames <- function(file_inventory, kitNumber_default = NA_character_) {
 
   list(
     valid = parsed |>
-      filter(filename_ok, material_valid, !is.na(targetId), !is.na(kitNumber_int), !is.na(measurementIndex_int)),
+      filter(filename_ok, material_valid, !is.na(targetClass), !is.na(kitNumber_int), !is.na(measurementIndex_int)),
     bad = parsed |>
-      filter(!filename_ok | !material_valid | is.na(targetId) | is.na(kitNumber_int) | is.na(measurementIndex_int))
+      filter(!filename_ok | !material_valid | is.na(targetClass) | is.na(kitNumber_int) | is.na(measurementIndex_int))
   )
 }
 
 check_file_counts <- function(valid_files, min_expected_files = MIN_EXPECTED_FILES) {
   valid_files |>
-    count(targetId, kitNumber, material_id, name = "n_files") |>
+    count(targetClass, kitNumber, material_id, name = "n_files") |>
     mutate(
       qc_flag = if_else(
         n_files < min_expected_files,
@@ -155,11 +155,11 @@ check_file_counts <- function(valid_files, min_expected_files = MIN_EXPECTED_FIL
         "OK"
       )
     ) |>
-    arrange(desc(qc_flag != "OK"), targetId, kitNumber)
+    arrange(desc(qc_flag != "OK"), targetClass, kitNumber)
 }
 
 check_missing_materials <- function(valid_files) {
-  found <- unique(valid_files$targetId)
+  found <- unique(valid_files$targetClass)
   tibble(missing_material = VALID_MATERIALS[!VALID_MATERIALS %in% found])
 }
 
@@ -216,7 +216,7 @@ spectra_to_long <- function(spec, valid_files) {
         select(
           short_filename, extension, filename_type,
           projectId_parsed, herbariumCode_parsed,
-          targetId, kitNumber, kitNumber_int,
+          targetClass, kitNumber, kitNumber_int,
           measurementIndex, measurementIndex_int,
           material_id
         ),
@@ -230,15 +230,29 @@ plot_material_static <- function(spectra_long, material_name) {
     filter(material_id == material_name) |>
     mutate(file_label = str_remove(short_filename, paste0("\\.", extension, "$")))
 
+  label_dat <- dat |>
+    group_by(short_filename) |>
+    slice_max(wavelength, n = 1) |>
+    ungroup()
+
   ggplot(dat, aes(x = wavelength, y = reflectance, group = short_filename, color = short_filename)) +
     geom_line(linewidth = 0.55, alpha = 0.85, show.legend = FALSE) +
+    geom_text(
+      data = label_dat,
+      aes(label = file_label),
+      hjust = 0,
+      size = 2.5,
+      show.legend = FALSE,
+      position = position_nudge(width = 5, height = 0.1)
+    ) +
     labs(
       title = paste("QC plot:", material_name),
       subtitle = "Each line is one spectral file",
       x = "Wavelength (nm)",
       y = "Reflectance"
     ) +
-    scale_y_continuous(limits = c(0, 1)) +
+    scale_x_continuous(expand = expansion(mult = c(0.02, 0.25))) +
+    scale_y_continuous(limits = c(-0.05, 1.1)) +
     theme_bw() +
     theme(panel.grid.minor = element_blank())
 }
@@ -319,8 +333,8 @@ infer_measurement_settings <- function(instrumentModel) {
   )
 }
 
-build_full_filename_no_ext <- function(projectId, herbariumCode, targetId, kitNumber, measurementIndex) {
-  paste(paste0("PI", projectId), paste0("HC", herbariumCode), paste0("TC", targetId), paste0("kit", kitNumber), measurementIndex, sep = "_")
+build_full_filename_no_ext <- function(projectId, herbariumCode, targetClass, kitNumber, measurementIndex) {
+  paste(paste0("PI", projectId), paste0("HC", herbariumCode), paste0("TC", targetClass), paste0("kit", kitNumber), measurementIndex, sep = "_")
 }
 
 export_good_files_and_metadata <- function(valid_files, flagged_files, form_values, out_dir, good_files_dir) {
@@ -337,7 +351,7 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
       full_filename = build_full_filename_no_ext(
         projectId = projectId,
         herbariumCode = herbariumCode,
-        targetId = targetId,
+        targetClass = targetClass,
         kitNumber = kitNumber,
         measurementIndex = measurementIndex
       ),
@@ -350,7 +364,7 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
     filter(n > 1)
 
   if (nrow(duplicate_export_files) > 0) {
-    stop("Duplicate export filenames detected. Check targetId, kitNumber, and measurementIndex values.")
+    stop("Duplicate export filenames detected. Check targetClass, kitNumber, and measurementIndex values.")
   }
 
   copy_success <- file.copy(
@@ -361,7 +375,7 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
 
   export_log <- good_files |>
     mutate(copy_success = copy_success) |>
-    select(short_filename, export_file, targetId, kitNumber, measurementIndex, path, export_path, copy_success)
+    select(short_filename, export_file, targetClass, kitNumber, measurementIndex, path, export_path, copy_success)
 
   write_csv(export_log, file.path(out_dir, "good_files_export_log.csv"))
 
@@ -369,7 +383,7 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
     transmute(
       full_filename,
       short_filename,
-      targetId,
+      targetClass,
       measurementIndex,
       projectId = form_values$projectId,
       herbariumCode = form_values$herbariumCode,
@@ -392,7 +406,7 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
       measurementAreaDiameter = form_values$measurementAreaDiameter,
       comment = ""
     ) |>
-    arrange(targetId, as.integer(measurementIndex))
+    arrange(targetClass, as.integer(measurementIndex))
 
   metadata_path <- file.path(out_dir, paste0("metadata-", form_values$projectId, "_", form_values$herbariumCode, ".csv"))
   write_csv(metadata, metadata_path)
@@ -420,17 +434,17 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
 # ============================================================
 
 ui <- fluidPage(
-  titlePanel("IHerbSpec spectra QC and metadata builder"),
+  titlePanel("IHerbSpec data harmonization spectra QC and metadata builder"),
 
   sidebarLayout(
     sidebarPanel(
       h4("1. Select spectral-file directory"),
       shinyDirButton("choose_dir", "Choose directory", "Select the folder containing .sed, .sig, .asd, or .txt files"),
       verbatimTextOutput("selected_dir"),
-      numericInput("kitNumber", "Kit number used for simple local filenames", value = 1, min = 1, step = 1),
       actionButton("read_files", "Read files and generate QC plots", class = "btn-primary"),
       hr(),
       h4("2. Required metadata"),
+      numericInput("kitNumber", "kitNumber", value = 1, min = 1, step = 1),
       textInput("herbariumCode", "herbariumCode", value = "HUH"),
       textInput("whiteReferenceDescription", "whiteReferenceDescription", value = "Spectralon"),
       textInput("instrumentModel", "instrumentModel", value = ""),
@@ -453,7 +467,7 @@ ui <- fluidPage(
       textInput("lensFieldOfView", "lensFieldOfView", value = ""),
       textInput("angleLightToSensor", "angleLightToSensor", value = ""),
       textInput("measurementAreaDiameter", "measurementAreaDiameter", value = ""),
-      textAreaInput("globalComment", "Optional note for this session; not copied to row-level comment", value = "", rows = 2),
+      helpText("The exported metadata CSV includes a blank comment column that can be filled manually after export."),
       hr(),
       actionButton("export", "Export good files and metadata CSV", class = "btn-success")
     ),
@@ -582,7 +596,10 @@ server <- function(input, output, session) {
 
   output$file_counts <- renderDT({
     req(parsed_data())
-    datatable(parsed_data()$file_counts, options = list(pageLength = 10))
+    datatable(
+      parsed_data()$file_counts |> select(-kitNumber, -material_id),
+      options = list(pageLength = 10)
+    )
   })
 
   output$missing_materials <- renderDT({
@@ -592,7 +609,9 @@ server <- function(input, output, session) {
 
   output$flagged_materials <- renderDT({
     req(parsed_data())
-    flagged <- parsed_data()$file_counts |> filter(n_files < MIN_EXPECTED_FILES)
+    flagged <- parsed_data()$file_counts |>
+      filter(n_files < MIN_EXPECTED_FILES) |>
+      select(-kitNumber, -material_id)
     datatable(flagged, options = list(pageLength = 10))
   })
 
@@ -695,8 +714,7 @@ server <- function(input, output, session) {
       distanceTargetToSensor = input$distanceTargetToSensor,
       lensFieldOfView = input$lensFieldOfView,
       angleLightToSensor = input$angleLightToSensor,
-      measurementAreaDiameter = input$measurementAreaDiameter,
-      globalComment = input$globalComment
+      measurementAreaDiameter = input$measurementAreaDiameter
     )
   })
 
@@ -709,12 +727,12 @@ server <- function(input, output, session) {
         full_filename = build_full_filename_no_ext(
           form$projectId,
           form$herbariumCode,
-          targetId,
+          targetClass,
           kitNumber,
           measurementIndex
         ),
         short_filename,
-        targetId,
+        targetClass,
         measurementIndex,
         projectId = form$projectId,
         herbariumCode = form$herbariumCode,
@@ -737,7 +755,7 @@ server <- function(input, output, session) {
         measurementAreaDiameter = form$measurementAreaDiameter,
         comment = ""
       ) |>
-      arrange(targetId, as.integer(measurementIndex))
+      arrange(targetClass, as.integer(measurementIndex))
   })
 
   output$metadata_preview <- renderDT({

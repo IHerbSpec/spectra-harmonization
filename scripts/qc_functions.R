@@ -55,8 +55,8 @@ list_spectral_files <- function(spectra_dir) {
 #   Simple local:       [TC]<material>_IDX.ext
 #
 # The optional TC prefix on the material is stripped before validation and
-# analysis; the canonical targetID is always the bare material string (e.g.
-# "fab2", not "TCfab2"). targetID must be one of the 19 VALID_MATERIALS.
+# analysis; the canonical targetClass is always the bare material string (e.g.
+# "fab2", not "TCfab2"). targetClass must be one of the 19 VALID_MATERIALS.
 #
 # Returns a list:
 #   $valid  — files that matched, parsed cleanly, and have a valid material
@@ -84,7 +84,7 @@ parse_filenames <- function(file_inventory, kitNumber = NA_character_) {
         str_match(filename_no_ext, shared_regex)[, 3],
         NA_character_
       ),
-      targetID_shared = if_else(
+      targetClass_shared = if_else(
         is_shared_name,
         str_match(filename_no_ext, shared_regex)[, 4],
         NA_character_
@@ -99,7 +99,7 @@ parse_filenames <- function(file_inventory, kitNumber = NA_character_) {
         str_match(filename_no_ext, shared_regex)[, 6],
         NA_character_
       ),
-      targetID_local  = if_else(
+      targetClass_local  = if_else(
         is_local_name,
         str_match(filename_no_ext, local_regex)[, 2],
         NA_character_
@@ -112,14 +112,14 @@ parse_filenames <- function(file_inventory, kitNumber = NA_character_) {
       )
     ) |>
     mutate(
-      targetID_raw                = coalesce(targetID_shared, targetID_local),
-      targetID                    = str_remove(targetID_raw, "^TC"),
+      targetClass_raw                = coalesce(targetClass_shared, targetClass_local),
+      targetClass                    = str_remove(targetClass_raw, "^TC"),
       kitNumber_parsed_or_entered = coalesce(kitNumber_shared, kitNumber_local),
       IDX                         = coalesce(IDX_shared, IDX_local),
       kitNumber_int               = as.integer(kitNumber_parsed_or_entered),
       IDX_int                     = as.integer(IDX),
-      material_valid              = targetID %in% VALID_MATERIALS,
-      material_id                 = paste(targetID, kitNumber_parsed_or_entered, sep = "_"),
+      material_valid              = targetClass %in% VALID_MATERIALS,
+      material_id                 = paste(targetClass, kitNumber_parsed_or_entered, sep = "_"),
       filename_type               = case_when(
         is_shared_name ~ "full_harmonization_filename",
         is_local_name  ~ "simple_local_filename",
@@ -128,20 +128,20 @@ parse_filenames <- function(file_inventory, kitNumber = NA_character_) {
     )
 
   list(
-    valid = parsed |> filter(filename_ok, material_valid, !is.na(targetID), !is.na(kitNumber_int), !is.na(IDX_int)),
-    bad   = parsed |> filter(!filename_ok | !material_valid | is.na(targetID) | is.na(kitNumber_int) | is.na(IDX_int))
+    valid = parsed |> filter(filename_ok, material_valid, !is.na(targetClass), !is.na(kitNumber_int), !is.na(IDX_int)),
+    bad   = parsed |> filter(!filename_ok | !material_valid | is.na(targetClass) | is.na(kitNumber_int) | is.na(IDX_int))
   )
 }
 
 
 # ---- Count files per material ------------------------------------------
 #
-# Returns a tibble with one row per targetID + kitNumber combination,
+# Returns a tibble with one row per targetClass + kitNumber combination,
 # showing file counts and a QC flag for materials below min_expected_files.
 
 check_file_counts <- function(valid_files, min_expected_files) {
   valid_files |>
-    count(targetID, name = "n_files") |>
+    count(targetClass, name = "n_files") |>
     mutate(
       qc_flag = if_else(
         n_files < min_expected_files,
@@ -149,11 +149,11 @@ check_file_counts <- function(valid_files, min_expected_files) {
         "OK"
       )
     ) |>
-    arrange(qc_flag, targetID)
+    arrange(qc_flag, targetClass)
 }
 
 check_missing_materials <- function(valid_files) {
-  found <- unique(valid_files$targetID)
+  found <- unique(valid_files$targetClass)
   tibble(missing_material = VALID_MATERIALS[!VALID_MATERIALS %in% found])
 }
 
@@ -226,7 +226,7 @@ spectra_to_long <- function(spec, valid_files) {
         select(
           file, extension, filename_type,
           projectID_parsed, herbariumCode_parsed,
-          targetID, kitNumber_parsed_or_entered,
+          targetClass, kitNumber_parsed_or_entered,
           kitNumber_int, IDX, IDX_int, material_id
         ),
       by = "file"
@@ -266,7 +266,7 @@ plot_material_qc <- function(spectra_long, material_name) {
       show.legend   = FALSE
     ) +
     scale_x_continuous(expand = expansion(mult = c(0.02, 0.25))) +
-    scale_y_continuous(limits = c(0, 1)) +
+    scale_y_continuous(limits = c(0, 1.1)) +
     labs(
       title    = paste("QC plot:", material_name),
       subtitle = "Each line is one spectral file; labels identify filenames for visual QC",
@@ -315,7 +315,7 @@ save_qc_plots <- function(spectra_long, qc_plot_dir, out_dir) {
 # Copies files that are not listed in files_to_delete into good_files_dir
 # using the full harmonization filename convention:
 #
-#   PIdataHarmonization2026_HC<herbariumCode>_TC<targetID>_kit<kitNumber>_<IDX>.<ext>
+#   PIdataHarmonization2026_HC<herbariumCode>_TC<targetClass>_kit<kitNumber>_<IDX>.<ext>
 #
 # Writes good_files_export_log.csv to out_dir.
 # Returns the export log tibble invisibly.
@@ -331,7 +331,7 @@ export_good_files <- function(valid_files, files_to_delete, herbariumCode,
       export_file = paste0(
         "PIdataHarmonization2026", "_",
         "HC", herbariumCode, "_",
-        "TC", targetID, "_",
+        "TC", targetClass, "_",
         "kit", kitNumber_parsed_or_entered, "_",
         IDX, ".",
         extension
@@ -347,7 +347,7 @@ export_good_files <- function(valid_files, files_to_delete, herbariumCode,
     print(duplicate_export_files, n = Inf)
     stop(
       "Duplicate export filenames detected. ",
-      "Check targetID, kitNumber, and IDX values before exporting."
+      "Check targetClass, kitNumber, and IDX values before exporting."
     )
   }
 
@@ -362,7 +362,7 @@ export_good_files <- function(valid_files, files_to_delete, herbariumCode,
     select(
       filename_with_extension = file,
       export_file,
-      targetID,
+      targetClass,
       kitNumber_parsed_or_entered,
       IDX,
       extension,
