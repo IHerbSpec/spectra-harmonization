@@ -15,15 +15,10 @@ spectra-harmonization/
 │   ├── raw_data_files/                    # Local input folder for raw spectral files
 │   ├── scripts/                           # QC scripts
 │   │   └── qc_spectra_files.R             # Main spectral file QC script
+|   ├── files_to_delete.csv                # User-edited list of files to be edited after visual QC and parsed to transfer files to 'good_files_full_filenames/'
 │   └── outputs/                           # QC outputs
-│       ├── ALL_materials_QC_labeled_spectra.pdf # Multipage plots for visual QC
-│       ├── qc_plots/                      # Individual QC plots in png
-│       ├── files_to_delete.csv            # User-edited list of files that should not be passed to `good_files_full_filenames/`
-│       ├── file_counts_by_material.csv    # For checking for 5 or more per material
-│       ├── parsed_file_inventory.csv      # Parsed filename metadata
-│       ├── bad_filenames.csv              # raw data files with unrecognized names
-│       ├── good_files_export_log.csv      # Log of exported good files
-│       └── good_files_full_filenames/     # Exported files with full filenames
+│       ├── qc_plots/                      # Individual QC plots in png will be ouput here
+│       └── good_files_full_filenames/     # Exported files with full filenames will be output here
 └── analyses/                              # Future analyses and shared workflows
 ``` 
 
