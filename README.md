@@ -19,7 +19,7 @@ spectra-harmonization/
 └── analyses/                # Open folder for shared analysis workflows
 ```
 
-## Running the 
+## Running the Shiny spectral data QC and metadata app
 
 Open the repository in RStudio by double-clicking `spectra-harmonization.Rproj`. This sets the working directory to the repository root, which all scripts assume.
 
