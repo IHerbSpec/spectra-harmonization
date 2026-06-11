@@ -31,15 +31,15 @@ This app was created to assist with project QC. It will:
 - copy passing files to a new folder with converted full filename conventions
 - generate an IHerbSpec-compatible metadata spreadsheet
 
-### File and Filename format
+### File and filename format compatability
 
 The script accepts SVC `.sig`, SE `.sed`, ASD `.asd`, and `.txt` file extensions (`.<ext>`), which are read with the spectrolab package.
 
-It is critical that each file contain the material identifier, which we treat in filenames as `targetClass`.
+Filenames need a material identifier to be parsed, which we treat in filenames as `targetClass`.
 
 #### Valid material identifiers
 
-All files need to contain these exact materials IDs bounded by underscores or the beginning of the filename, or they will be flagged as unrecognized.
+All filenames need to contain these exact materials IDs with or without `TC` prefix bounded by underscores or the beginning of the filename (e.g., `TCfab2_`, `fab2_`, or `_fab2_`), or they will be flagged as unrecognized.
 
 | TC | TC | TC | TC | description|
 |---|---|---|---|---|
@@ -51,7 +51,6 @@ All files need to contain these exact materials IDs bounded by underscores or th
 | magmac-ab | magmac-ad | - | - | *Magnolia* leaf, abaxial and adaxial |
 | phymac-ab | phymac-ad | - | - | *Phytelephas* leaf, abaxial and adaxial |
 | ravmad-ab | ravmad-ad | - | - | *Ravenalia* leaf, abaxial and adaxial |
-
 
 See Appendix II of the Concept note (https://docs.google.com/document/d/1W4qnylcvcscRP1e4GUldb6nxxLsuR12HL7QZ-eJv3zg/edit?usp=sharing) for instrument and measurement settings and measurement protocol (minimum five measurements per material, take white reference between materials). 
 
@@ -70,6 +69,14 @@ PIdataHarmonization2026_HC<herbariumCode>_TC<material>_kit<n>_<IDX>.<ext>
 Example: `PIdataHarmonization2026_HCHUH_TCfab2_kit1_0000.sig`
 
 This is the format files will be converted to.
+
+#### Invalid filnames
+These filenames will not be recognized
+```
+RANDOMfab2stuff_00035.sed
+samplefab2_00035.sed
+fab200035.sed
+```
 
 **WARNING:** The full filename convention does not, by itself, distinguish measurements made with **different foreoptics or optical setup configurations on the same instrument**. These differences can only be interpreted reliably if the files have distinct `measurementIndex` values and are linked to the metadata spreadsheet. If different optical setups are used, consider adding `SN<sessionId>` or another short foreoptic/optical setup identifier to the full filename (e.g., `SVC-8deg`). This is not a problem if the only difference is the instrument model because of different file extensions.
 
