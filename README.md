@@ -21,21 +21,45 @@ spectra-harmonization/
 
 ## Running the Shiny spectral data QC and metadata app
 
-Open the repository in RStudio by double-clicking `spectra-harmonization.Rproj`. This sets the working directory to the repository root, which all scripts assume.
+This app was created to assist with project QC. It will: 
+- read spectral files with simple filename convention.
+- create plots for visual inspection
+- users can flag files for removal
+- check the number of files for each kit material
+- copy passing files to a new folder with converted full filename conventions
+- generate an IHerbSpec-compatible metadata spreadsheet.
 
-Install required packages if needed:
+### File and Filename format
 
-```r
-install.packages(c("shiny", "shinyFiles", "tidyverse", "DT", "plotly", "fs","spectrolab","ggrepel"))
-```
+The script accepts SVC `.sig`, SE `.sed`, ASD `.asd`, and `.txt` file extensions (`.<ext>`), which are read with the spectrolab package.
 
-## Filename format
+It is critical that each file contain the material identifier, which we treat in filenames as `targetClass`.
+
+#### Valid material identifiers
+
+All files need to contain these exact materials IDs or they will be flagged as unrecognized.
+
+| TC | TC | TC| TC| description|
+|---|---|---|---|---|
+| tcb | tcw | - | - | black background (provided) and white reference (not provided) |
+| pnt1 | pnt2 | pnt3 | pnt4 | painted panels |
+| fab2 | fab5 | - | - | fabrics |
+| fel2 | fel3 | - | - | felts |
+| tvk | - | - | - | tyvek |
+| magmac-ab | magmac-ad | - | - | *Magnolia* leaf, abaxial and adaxial |
+| phymac-ab | phymac-ad | - | - | *Phytelephas* leaf, abaxial and adaxial |
+| ravmad-ab | ravmad-ad | - | - | *Ravenalia* leaf, abaxial and adaxial |
+
+
+
+As described in Appendix II of the Concept note (https://docs.google.com/document/d/1W4qnylcvcscRP1e4GUldb6nxxLsuR12HL7QZ-eJv3zg/edit?usp=sharing), spectral files need to have a specific filename format for the app to recognize them.
 
 The scripts will read spectral files named using either the simple filename convention or the full file convention below. The material identifier must be one of the 19 valid materials listed below.
 
-The script accepts SVC `.sig`, SE `.sed`, ASD `.asd`, and `.txt` files, which are read with the spectrolab package.
+WARNING: The full filename convention does not, by itself, distinguish measurements made with **different foreoptics or optical setup configurations on the same instrument**. These differences can only be interpreted reliably if the files have distinct `measurementIndex` values and are linked to the metadata spreadsheet. If different optical setups are used, we recommend adding `SN<sessionId>` or another short foreoptic/optical setup identifier to the full filename. This is not a problem if the only difference is the instrument model because of different file extensions.
 
-### Simple local filename
+
+#### The simplest starting filename
 ```
 [TC]<material>_<IDX>.<ext>
 ```
@@ -43,32 +67,46 @@ Examples: `fab2_0000.sig`, `TCfab2_0000.sed`
 
 The `TC` prefix on the material is optional and will be stripped internally.
 
-### Full harmonization filename
+#### Full harmonization filename
 ```
 PIdataHarmonization2026_HC<herbariumCode>_TC<material>_kit<n>_<IDX>.<ext>
 ```
 Example: `PIdataHarmonization2026_HCHUH_TCfab2_kit1_0000.sig`
 
-### Valid materials
-
-All files need to contain these exact materials IDs or they will be flagged as unrecognized.
-
-| | | | |
-|---|---|---|---|
-| fab2 | fab5 | fel2 | fel3 |
-| magmac-ab | magmac-ad | pap11 | pap6 |
-| phymac-ab | phymac-ad | pnt1 | pnt2 |
-| pnt3 | pnt4 | ravmad-ab | ravmad-ad |
-| tcb | tcw | tvk | |
-
 
 ---
 
-## Shiny QC and metadata app (`spectra-files-qc-app.R`)
+## Installing the spectra-harmonization GitHub repo
+
+Terminal instructions:
+
+Navigate to the folder where you want to clone the repository. For example:
+
+```bash
+cd ~/Documents/GitHub
+```
+
+Clone the repository from GitHub:
+
+```bash
+git clone https://github.com/YOUR-ORG-OR-USER/spectra-harmonization.git
+```
+
+Open the repository in RStudio by double-clicking `spectra-harmonization.Rproj`. This sets the working directory to the repository root, which all scripts assume.
+
+Install required packages, if needed:
+
+```r
+install.packages(c("shiny", "shinyFiles", "tidyverse", "DT", "plotly", "fs","spectrolab","ggrepel"))
+```
+
+---
+
+## Running the Shiny QC and metadata app (`spectra-files-qc-app.R`)
 
 The Shiny app supports interactive visual QC, file flagging, metadata capture, and standardized file export.
 
-### Running the app
+### Run the app
 
 ```r
 shiny::runApp("spectra-files-qc-app.R")
@@ -81,6 +119,9 @@ shiny::runApp("spectra-files-qc-app.R")
 3. **Review QC plots** — spectra are plotted per material. Click a spectrum line or use the checkboxes to flag individual files for removal.
 4. **Fill in the metadata form** — instrument, optical setup, operator, and measurement settings.
 5. **Export** — unflagged files are copied to `shiny_qc_outputs/good_files_full_filenames/` using the full harmonization filename format. A metadata CSV is written alongside.
+
+#### What constitutes a 'bad' spectral measurement that should be flagged?
+Measurements with **differences in the shape of the spectral profile** should receive scrutiny and probably be removed. Differences in magnitude of the curves (ca. 5-10%) with no discernable shape difference are OK. Curves that look like **visual outliers**, however, should probably be removed.
 
 ### Outputs
 
