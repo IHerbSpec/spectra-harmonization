@@ -19,15 +19,16 @@ spectra-harmonization/
 └── analyses/                # Open folder for shared analysis workflows
 ```
 
-## Running the Shiny spectral data QC and metadata app
+## Running the Shiny spectral data QC and metadata builder app
 
 This app was created to assist with project QC. It will: 
-- read spectral files with simple filename convention.
+- read spectral files with simple filename convention
 - create plots for visual inspection
 - users can flag files for removal
 - check the number of files for each kit material
+- prompt input for required and optional metadata fields
 - copy passing files to a new folder with converted full filename conventions
-- generate an IHerbSpec-compatible metadata spreadsheet.
+- generate an IHerbSpec-compatible metadata spreadsheet
 
 ### File and Filename format
 
@@ -51,13 +52,7 @@ All files need to contain these exact materials IDs or they will be flagged as u
 | ravmad-ab | ravmad-ad | - | - | *Ravenalia* leaf, abaxial and adaxial |
 
 
-
-As described in Appendix II of the Concept note (https://docs.google.com/document/d/1W4qnylcvcscRP1e4GUldb6nxxLsuR12HL7QZ-eJv3zg/edit?usp=sharing), spectral files need to have a specific filename format for the app to recognize them.
-
-The scripts will read spectral files named using either the simple filename convention or the full file convention below. The material identifier must be one of the 19 valid materials listed below.
-
-WARNING: The full filename convention does not, by itself, distinguish measurements made with **different foreoptics or optical setup configurations on the same instrument**. These differences can only be interpreted reliably if the files have distinct `measurementIndex` values and are linked to the metadata spreadsheet. If different optical setups are used, we recommend adding `SN<sessionId>` or another short foreoptic/optical setup identifier to the full filename. This is not a problem if the only difference is the instrument model because of different file extensions.
-
+See Appendix II of the Concept note (https://docs.google.com/document/d/1W4qnylcvcscRP1e4GUldb6nxxLsuR12HL7QZ-eJv3zg/edit?usp=sharing) for instrument and measurement settings and measurement protocol (minimum five measurements per material, take white reference between materials). 
 
 #### The simplest starting filename
 ```
@@ -73,6 +68,9 @@ PIdataHarmonization2026_HC<herbariumCode>_TC<material>_kit<n>_<IDX>.<ext>
 ```
 Example: `PIdataHarmonization2026_HCHUH_TCfab2_kit1_0000.sig`
 
+This is the format files will be converted to.
+
+**WARNING:** The full filename convention does not, by itself, distinguish measurements made with **different foreoptics or optical setup configurations on the same instrument**. These differences can only be interpreted reliably if the files have distinct `measurementIndex` values and are linked to the metadata spreadsheet. If different optical setups are used, consider adding `SN<sessionId>` or another short foreoptic/optical setup identifier to the full filename (e.g., `SVC-8deg`). This is not a problem if the only difference is the instrument model because of different file extensions.
 
 ---
 
@@ -163,4 +161,4 @@ An open folder for future work where participating researchers to share data tra
 
 ## Notes
 
-Raw spectral files and outputs should generally not be committed to the repository. Add `raw_data_files/` and `outputs/` to `.gitignore` if working locally.
+Raw spectral files and outputs should generally not be committed to the repository. Add data file and outputs folders to `.gitignore` if you have moved such things into the repo folder.
