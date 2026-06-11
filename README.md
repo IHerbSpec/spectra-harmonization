@@ -13,6 +13,7 @@ spectra-harmonization/
 ├── README.md
 ├── spectra-harmonization.Rproj
 ├── spectra-files-qc-app.R   # Shiny app for interactive QC and metadata export
+├── test_data/               # .sed files for testing the Shiny app.
 ├── scripts/
 │   ├── qc_spectra_files.R   # Batch QC script (plots and file counts only)
 │   └── qc_functions.R       # Shared helper functions (sourced automatically)
@@ -38,9 +39,9 @@ It is critical that each file contain the material identifier, which we treat in
 
 #### Valid material identifiers
 
-All files need to contain these exact materials IDs or they will be flagged as unrecognized.
+All files need to contain these exact materials IDs bounded by underscores or the beginning of the filename, or they will be flagged as unrecognized.
 
-| TC | TC | TC| TC| description|
+| TC | TC | TC | TC | description|
 |---|---|---|---|---|
 | tcb | tcw | - | - | black background (provided) and white reference (not provided) |
 | pnt1 | pnt2 | pnt3 | pnt4 | painted panels |
