@@ -4,7 +4,7 @@ A collaborative repository for the IHerbSpec spectral data harmonization project
 
 Currently, the repo hosts the scripts to run the shiny app for spectral data quality control (QC). See instructions and functionality below.
 
-Additional subdirectories for data transformation and analysis can be added to the `analyses/` directory as the project develops.
+Additional subdirectories for data transformation and analysis can be added to the `analyses/` directory in the future as the project develops.
 
 ## Repository structure
 
