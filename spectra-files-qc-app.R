@@ -363,8 +363,8 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
 
   metadata <- good_files |>
     transmute(
-      full_filename = export_file,
-      original_filename = short_filename,
+      fullFilename = export_file,
+      originalFilename = short_filename,
       targetClass,
       measurementIndex,
       projectId = form_values$projectId,
@@ -730,7 +730,7 @@ server <- function(input, output, session) {
     parsed_data()$valid |>
       filter(!short_filename %in% flagged_files()) |>
       transmute(
-        full_filename = paste0(
+        fullFilename = paste0(
           build_full_filename_no_ext(
             form$projectId,
             form$herbariumCode,
@@ -741,7 +741,7 @@ server <- function(input, output, session) {
           ".",
           extension
         ),
-        original_filename = short_filename,
+        originalFilename = short_filename,
         targetClass,
         measurementIndex,
         projectId = form$projectId,
@@ -800,6 +800,13 @@ server <- function(input, output, session) {
       return(NULL)
     }
     
+    files_to_export <- parsed_data()$valid |>
+      filter(!short_filename %in% flagged_files())
+
+    low_export_counts <- files_to_export |>
+    count(targetClass, name = "n_exported") |>
+      filter(n_exported < MIN_EXPECTED_FILES)
+    
     result <- export_good_files_and_metadata(
       valid_files = parsed_data()$valid,
       flagged_files = flagged_files(),
@@ -810,11 +817,26 @@ server <- function(input, output, session) {
     
     export_result(result)
     
-    showModal(modalDialog(
-      title = "Export complete",
-      paste("Metadata CSV written to:", result$metadata_path),
-      easyClose = TRUE
-    ))
+    if (nrow(low_export_counts) > 0) {
+      showModal(modalDialog(
+        title = "Export complete, with warning",
+        p(paste("Metadata CSV written to:", result$metadata_path)),
+        p(
+          "Warning: some materials have fewer than ",
+          MIN_EXPECTED_FILES,
+          " unflagged measurements in the exported files and metadata spreadsheet."
+        ),
+        renderTable(low_export_counts),
+        p("Please add these files and redo export before downstream analysis."),
+        easyClose = TRUE
+      ))
+    } else {
+      showModal(modalDialog(
+        title = "Export complete",
+        paste("Metadata CSV written to:", result$metadata_path),
+        easyClose = TRUE
+      ))
+    }
   })
 
   output$export_status <- renderText({
