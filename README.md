@@ -41,16 +41,16 @@ Filenames need a material identifier to be parsed, which we treat in filenames a
 
 All filenames need to contain these exact materials IDs with or without `TC` prefix bounded by underscores or the beginning of the filename (e.g., `TCfab2_`, `fab2_`, or `_fab2_`), or they will be flagged as unrecognized.
 
-| TC | TC | TC | TC | description|
-|---|---|---|---|---|
-| tcb | tcw | - | - | black background (provided) and white reference (not provided) |
-| pnt1 | pnt2 | pnt3 | pnt4 | painted panels |
-| fab2 | fab5 | - | - | fabrics |
-| fel2 | fel3 | - | - | felts |
-| tvk | - | - | - | tyvek |
-| magmac-ab | magmac-ad | - | - | *Magnolia* leaf, abaxial and adaxial |
-| phymac-ab | phymac-ad | - | - | *Phytelephas* leaf, abaxial and adaxial |
-| ravmad-ab | ravmad-ad | - | - | *Ravenalia* leaf, abaxial and adaxial |
+| TC | description|
+|---|---|
+| tcb, tcw | black background (provided) and white reference (not provided) |
+| pnt1, pnt2, pnt3, pnt4 | painted panels |
+| fab2, fab5 | fabrics |
+| fel2, fel3 | felts |
+| tvk | tyvek |
+| magmac-ab, magmac-ad | *Magnolia* leaf, abaxial and adaxial |
+| phymac-ab, phymac-ad | *Phytelephas* leaf, abaxial and adaxial |
+| ravmad-ab, ravmad-ad | *Ravenalia* leaf, abaxial and adaxial |
 
 See Appendix II of the Concept note (https://docs.google.com/document/d/1W4qnylcvcscRP1e4GUldb6nxxLsuR12HL7QZ-eJv3zg/edit?usp=sharing) for instrument and measurement settings and measurement protocol (minimum five measurements per material, take white reference between materials). 
 
