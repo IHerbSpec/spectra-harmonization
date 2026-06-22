@@ -19,6 +19,7 @@ spectra-harmonization/
 │   └── qc_functions.R       # Shared helper functions (sourced automatically)
 └── analyses/                # Open folder for shared analysis workflows
 ```
+---
 
 ## Running the Shiny spectral data QC and metadata builder app
 
@@ -31,7 +32,7 @@ This app was created to assist with project QC. It will:
 - copy passing files to a new folder with converted full filename conventions
 - generate an IHerbSpec-compatible metadata spreadsheet
 
-### File and filename format compatability
+### Spectral file and filename compatability for the app
 
 The script accepts SVC `.sig`, SE `.sed`, ASD `.asd`, and `.txt` file extensions (`.<ext>`), which are read with the spectrolab package.
 
