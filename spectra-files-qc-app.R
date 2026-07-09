@@ -268,7 +268,7 @@ plot_material_interactive <- function(spectra_long, material_name, flagged_files
     event_register("plotly_click")
 }
 
-save_qc_plots <- function(spectra_long, qc_plot_dir, out_dir) {
+save_qc_plots <- function(spectra_long, qc_plot_dir, out_dir, output_prefix = "QC") {
   dir_create(qc_plot_dir)
   dir_create(out_dir)
 
@@ -289,7 +289,7 @@ save_qc_plots <- function(spectra_long, qc_plot_dir, out_dir) {
     )
   }
 
-  pdf_path <- file.path(out_dir, "ALL_materials_QC_labeled_spectra.pdf")
+  pdf_path <- file.path(out_dir, paste0(output_prefix, "-SpectraPlots.pdf"))
   pdf(pdf_path, width = 10, height = 6)
   on.exit(dev.off(), add = TRUE)
   for (mat in materials) print(plot_material_static(spectra_long, mat))
@@ -313,6 +313,7 @@ build_full_filename_no_ext <- function(projectId, herbariumCode, targetClass, ki
 export_good_files_and_metadata <- function(valid_files, flagged_files, form_values, out_dir, good_files_dir) {
   dir_create(out_dir)
   dir_create(good_files_dir)
+  output_prefix <- build_output_prefix(form_values)
 
   good_files <- valid_files |>
     filter(!short_filename %in% flagged_files) |>
@@ -390,7 +391,10 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
     ) |>
     arrange(targetClass, as.integer(measurementIndex))
 
-  metadata_path <- file.path(out_dir, paste0("metadata-", form_values$projectId, "_", form_values$herbariumCode, ".csv"))
+  metadata_path <- file.path(
+  out_dir,
+  paste0("metadata-", form_values$projectId, "_", output_prefix, ".csv")
+  )
   write_csv(metadata, metadata_path)
 
   files_to_delete <- tibble(
@@ -398,6 +402,48 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
     reason = "flagged in Shiny app"
   )
   write_csv(files_to_delete, file.path(out_dir, "files_flagged_for_removal.csv"))
+  
+
+spectra_pdf_share <- file.path(
+  out_dir,
+  paste0(output_prefix, "-SpectraPlots.pdf")
+)
+
+if (!file.exists(spectra_pdf_share)) {
+  warning("QC spectra PDF not found: ", spectra_pdf_share)
+  spectra_pdf_share <- NA_character_
+}
+
+  share_zip_path <- file.path(
+    out_dir,
+    paste0("SHARE-", output_prefix, ".zip")
+  )
+
+  files_for_zip <- c(
+    metadata_path,
+    file.path(out_dir, "good_files_export_log.csv"),
+    file.path(out_dir, "files_flagged_for_removal.csv"),
+    spectra_pdf_share,
+    list.files(good_files_dir, full.names = TRUE)
+  )
+
+  files_for_zip <- files_for_zip[
+    !is.na(files_for_zip) & file.exists(files_for_zip)
+  ]
+
+  if (file.exists(share_zip_path)) {
+    file.remove(share_zip_path)
+  }
+
+  old_wd <- getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+
+  setwd(out_dir)
+
+  utils::zip(
+    zipfile = share_zip_path,
+    files = fs::path_rel(files_for_zip, start = out_dir)
+  )
 
   list(
     good_files = good_files,
@@ -405,11 +451,33 @@ export_good_files_and_metadata <- function(valid_files, flagged_files, form_valu
     metadata = metadata,
     metadata_path = metadata_path,
     flagged_path = file.path(out_dir, "files_flagged_for_removal.csv"),
+    spectra_pdf_share = spectra_pdf_share,
+    share_zip_path = share_zip_path,
     good_files_dir = good_files_dir
   )
+  
 }
 
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || is.na(x)) y else x
+
+make_safe_filename_component <- function(x) {
+  x |>
+    as.character() |>
+    stringr::str_trim() |>
+    stringr::str_replace_all("[^A-Za-z0-9]+", "-") |>
+    stringr::str_replace_all("^-|-$", "")
+}
+
+build_output_prefix <- function(form_values) {
+  paste0(
+    "kit",
+    make_safe_filename_component(form_values$kitNumber),
+    "_",
+    make_safe_filename_component(form_values$herbariumCode),
+    "_",
+    make_safe_filename_component(form_values$instrumentModel)
+  )
+}
 
 # ============================================================
 # Shiny UI
@@ -428,7 +496,6 @@ ui <- fluidPage(
       h4("2. Required metadata"),
       numericInput("kitNumber", "kitNumber", value = NA, min = 1, step = 1),
       textInput("herbariumCode", "herbariumCode", value = ""),
-      textInput("whiteReferenceDescription", "whiteReferenceDescription", value = "Spectralon"),
       textInput("instrumentModel", "instrumentModel", value = ""),
       textInput("opticalSetupDescription", "opticalSetupDescription", value = ""),
       uiOutput("measurement_settings_ui"),
@@ -440,6 +507,7 @@ ui <- fluidPage(
       checkboxInput("hasBackgroundInMeasurement", "hasBackgroundInMeasurement", value = DEFAULT_HAS_BACKGROUND_IN_MEASUREMENT),
       numericInput("percentBackgroundInMeasurement", "percentBackgroundInMeasurement", value = DEFAULT_PERCENT_BACKGROUND_IN_MEASUREMENT, min = 0, max = 100),
       textInput("backgroundDescription", "backgroundDescription", value = DEFAULT_BACKGROUND_DESCRIPTION),
+      textInput("whiteReferenceDescription", "whiteReferenceDescription", value = "Spectralon"),
       hr(),
       h4("4. Optional metadata"),
       textInput("operator", "operator", value = ""),
@@ -451,19 +519,19 @@ ui <- fluidPage(
       textInput("measurementAreaDiameter", "measurementAreaDiameter", value = ""),
       helpText("The exported metadata CSV includes a blank comment column that can be filled manually after export."),
       hr(),
-      actionButton("export", "Export good files and metadata CSV", class = "btn-success")
+      actionButton("export", "Generate metadata CSV and shareable files", class = "btn-success")
     ),
 
     mainPanel(
       tabsetPanel(
         tabPanel(
           "File checks",
+          h4("All material counts"),
+          DTOutput("file_counts"),
           h4("Missing materials (not found in any filename)"),
           DTOutput("missing_materials"),
           h4("Materials with fewer than five samples"),
           DTOutput("flagged_materials"),
-          h4("All material counts"),
-          DTOutput("file_counts"),
           h4("Files without a valid material identifier"),
           DTOutput("bad_filenames"),
           h4("QC output status"),
@@ -807,6 +875,23 @@ server <- function(input, output, session) {
     count(targetClass, name = "n_exported") |>
       filter(n_exported < MIN_EXPECTED_FILES)
     
+output_prefix <- build_output_prefix(current_form_values())
+
+final_pdf_path <- save_qc_plots(
+  spectra_long = spectra_long_data(),
+  qc_plot_dir = parsed_data()$qc_plot_dir,
+  out_dir = parsed_data()$out_dir,
+  output_prefix = output_prefix
+)
+
+pdf_path_val(final_pdf_path)
+
+temporary_pdf_path <- file.path(parsed_data()$out_dir, "QC-SpectraPlots.pdf")
+
+if (file.exists(temporary_pdf_path)) {
+  file.remove(temporary_pdf_path)
+}
+
     result <- export_good_files_and_metadata(
       valid_files = parsed_data()$valid,
       flagged_files = flagged_files(),
@@ -817,10 +902,11 @@ server <- function(input, output, session) {
     
     export_result(result)
     
+    
     if (nrow(low_export_counts) > 0) {
       showModal(modalDialog(
         title = "Export complete, with warning",
-        p(paste("Metadata CSV written to:", result$metadata_path)),
+        p(paste("Sharable ZIP, metadata CSV, renamed files, and QC outputs were written to:", parsed_data()$out_dir)),
         p(
           "Warning: some materials have fewer than ",
           MIN_EXPECTED_FILES,
@@ -833,7 +919,7 @@ server <- function(input, output, session) {
     } else {
       showModal(modalDialog(
         title = "Export complete",
-        paste("Metadata CSV written to:", result$metadata_path),
+        paste("Sharable ZIP, metadata CSV, renamed files, and QC outputs were written to:", parsed_data()$out_dir),
         easyClose = TRUE
       ))
     }
@@ -845,6 +931,8 @@ server <- function(input, output, session) {
     paste(
       "Metadata CSV: ", result$metadata_path,
       "\nGood files folder: ", result$good_files_dir,
+      "\nSpectra plots PDF: ", result$spectra_pdf_share,
+      "\nShare ZIP: ", result$share_zip_path,
       "\nFlagged-file CSV: ", result$flagged_path,
       "\nFiles exported: ", nrow(result$good_files),
       "\nFiles flagged for removal: ", length(flagged_files()),
