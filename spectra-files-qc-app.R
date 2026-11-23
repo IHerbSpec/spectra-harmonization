@@ -182,18 +182,18 @@ spectra_to_long <- function(spec, valid_files) {
     ) |>
     mutate(
       wavelength = as.numeric(wavelength),
-      short_filename = basename(sample_name)
+      filename_no_ext = tools::file_path_sans_ext(basename(sample_name))
     ) |>
     left_join(
       valid_files |>
         select(
-          short_filename, extension, filename_type,
+          filename_no_ext, short_filename, extension, filename_type,
           projectId_parsed, herbariumCode_parsed,
           targetClass, kitNumber, kitNumber_int,
           measurementIndex, measurementIndex_int,
           material_id
         ),
-      by = "short_filename"
+      by = "filename_no_ext"
     ) |>
     filter(!is.na(material_id))
 }
@@ -458,7 +458,9 @@ if (!file.exists(spectra_pdf_share)) {
   
 }
 
-`%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || is.na(x)) y else x
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0) y else x
+}
 
 make_safe_filename_component <- function(x) {
   x |>
@@ -488,12 +490,14 @@ ui <- fluidPage(
 
   sidebarLayout(
     sidebarPanel(
-      h4("1. Select spectral-file directory"),
+      h4("1. Load files, check numbers and quality"),
+      helpText("Select the folder containing spectral files and click the 'Read files' button. Next, in the 'File Checks' tab to the right, review whether all expected material types and minimum file counts are present (minimum five files per material). Then use the Visual QC tool in the next tab to flag files with abnormal reflectance data. After Visual QC, move on to Step 2 to enter metadata."),
       shinyDirButton("choose_dir", "Choose directory", "Select the folder containing .sed, .sig, .asd, or .txt files"),
       verbatimTextOutput("selected_dir"),
       actionButton("read_files", "Read files and generate QC plots", class = "btn-primary"),
       hr(),
       h4("2. Required metadata"),
+      helpText("Enter values for all required metadata fields below, then move to Step 3."),
       numericInput("kitNumber", "kitNumber", value = NA, min = 1, step = 1),
       textInput("herbariumCode", "herbariumCode", value = ""),
       textInput("instrumentModel", "instrumentModel", value = ""),
@@ -501,6 +505,7 @@ ui <- fluidPage(
       uiOutput("measurement_settings_ui"),
       hr(),
       h4("3. Confirm auto-populated fields"),
+      helpText("These are additional required metadata fields that can be edited as needed. Revise these fields, then move to Step 4."),
       textInput("projectId", "projectId", value = DEFAULT_PROJECT_ID),
       textInput("backgroundClass", "backgroundClass", value = DEFAULT_BACKGROUND_CLASS),
       checkboxInput("hasLowReflectanceBackground", "hasLowReflectanceBackground", value = DEFAULT_HAS_LOW_REFLECTANCE_BACKGROUND),
@@ -510,6 +515,7 @@ ui <- fluidPage(
       textInput("whiteReferenceDescription", "whiteReferenceDescription", value = "Spectralon"),
       hr(),
       h4("4. Optional metadata"),
+      helpText("Add values as desired. All entered metadata can be visualized in table format with the third 'Metadata preview' tab at right. Finally, click the 'Generate metadata CSV and shareable files' button below to generate output files."),
       textInput("operator", "operator", value = ""),
       textInput("instrumentCalibrationDate", "instrumentCalibrationDate", value = ""),
       textInput("lightSourceType", "lightSourceType", value = ""),
@@ -519,7 +525,8 @@ ui <- fluidPage(
       textInput("measurementAreaDiameter", "measurementAreaDiameter", value = ""),
       helpText("The exported metadata CSV includes a blank comment column that can be filled manually after export."),
       hr(),
-      actionButton("export", "Generate metadata CSV and shareable files", class = "btn-success")
+      actionButton("export", "Generate metadata CSV and shareable files", class = "btn-success"),
+      helpText("Output files will be present in the 'shiny_qc_outputs' folder inside the data directory.")
     ),
 
     mainPanel(
