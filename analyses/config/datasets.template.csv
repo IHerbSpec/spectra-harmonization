@@ -1,0 +1,2 @@
+dataset_id,format,spectra_path,metadata_path,institution,instrument_family,instrument_model,instrument_id,optic_id,reflectance_units,include,exclusion_reason
+replace_with_setup_id,native,data/raw/your_setup/good_files_full_filenames,data/metadata/your_setup.csv,YOUR_INSTITUTION,SVC,YOUR_MODEL,YOUR_PHYSICAL_INSTRUMENT_ID,YOUR_OPTIC_ID,fraction,TRUE,

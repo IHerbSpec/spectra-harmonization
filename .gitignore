@@ -48,4 +48,7 @@ shiny_qc_outputs/
 
 
 .positai
-analyses/
+analyses/data/
+analyses/outputs/
+analyses/config/local.R
+analyses/config/datasets.local.csv

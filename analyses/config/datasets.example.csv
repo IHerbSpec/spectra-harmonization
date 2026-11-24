@@ -1,0 +1,5 @@
+dataset_id,format,spectra_path,metadata_path,institution,instrument_family,instrument_model,instrument_id,optic_id,reflectance_units,include,exclusion_reason
+demo_naturaspec,wide_csv,data/example/demo_naturaspec_spectra.csv,data/example/demo_naturaspec_metadata.csv,SYNTHETIC,NaturaSpec,Synthetic_NaturaSpec,DEMO_NS1,contact,fraction,TRUE,
+demo_svc_contact,wide_csv,data/example/demo_svc_contact_spectra.csv,data/example/demo_svc_contact_metadata.csv,SYNTHETIC,SVC,Synthetic_SVC,DEMO_SVC1,contact,fraction,TRUE,
+demo_svc_lens,wide_csv,data/example/demo_svc_lens_spectra.csv,data/example/demo_svc_lens_metadata.csv,SYNTHETIC,SVC,Synthetic_SVC,DEMO_SVC1,lens,fraction,TRUE,
+demo_asd,wide_csv,data/example/demo_asd_spectra.csv,data/example/demo_asd_metadata.csv,SYNTHETIC,ASD,Synthetic_ASD,DEMO_ASD1,contact,percent,TRUE,
